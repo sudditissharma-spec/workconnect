@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title> Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:#f4f6fc; display:flex; min-height:100vh; color:#333; }
+
+/* Sidebar */
+.sidebar { width:220px; background:#1F2937; color:white; display:flex; flex-direction:column; padding-top:30px; }
+.sidebar h1 { text-align:center; margin-bottom:40px; font-size:22px; }
+.sidebar button { border:none; background:none; color:white; padding:15px 20px; text-align:left; font-size:16px; cursor:pointer; transition:0.3s; width:100%; }
+.sidebar button:hover, .sidebar button.active { background:#10B981; font-weight:600; }
+
+/* Main Content */
+main { flex:1; display:flex; flex-direction:column; }
+
+/* Horizontal Tabs */
+.tabs { display:flex; gap:10px; margin-bottom:20px; padding:0 20px; }
+.tabs button { background:white; border:none; padding:12px 20px; font-size:14px; border-radius:8px 8px 0 0; cursor:pointer; font-weight:500; color:#111827; transition:0.3s; }
+.tabs button.active { background:#10B981; color:white; box-shadow:0 -4px 10px rgba(0,0,0,0.1); }
+
+/* Tab Content */
+.tab-content { display:none; flex-direction:column; gap:20px; padding:0 20px; }
+
+/* Cards */
+.cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:20px; }
+.card { background:white; border-radius:12px; padding:20px; box-shadow:0 5px 15px rgba(0,0,0,0.08); transition:0.3s; position:relative; overflow:hidden; }
+.card:hover { transform:translateY(-5px); box-shadow:0 12px 25px rgba(0,0,0,0.12);}
+.card h3 { font-weight:600; color:#111827; margin-bottom:10px; }
+.card p { font-size:20px; font-weight:700; color:#10B981; }
+.mini-bar { height:4px; background:#3B82F6; margin-top:5px; border-radius:4px; transition:0.3s; }
+
+/* Table */
+table { width:100%; border-collapse: collapse; border-radius:12px; overflow:hidden; box-shadow:0 4px 15px rgba(0,0,0,0.08); background:white; margin-top:20px; }
+th, td { padding:12px; text-align:left; font-size:14px; border-bottom:1px solid #E5E7EB; }
+th { background:#111827; color:white; font-weight:600; }
+tr:nth-child(even) { background:#F9FAFB; }
+tr:hover { background:#E5E7EB; }
+
+.progress-bar-container { background:#E5E7EB; border-radius:12px; height:16px; width:100%; }
+.progress-bar { height:100%; border-radius:12px; text-align:right; padding-right:5px; color:white; font-size:12px; line-height:16px; }
+
+.badge { padding:4px 10px; border-radius:12px; font-size:12px; font-weight:600; color:white; }
+.badge.Active { background:#10B981; }
+.badge.OnLeave { background:#F59E0B; }
+.badge.Inactive { background:#EF4444; }
+
+.chart-container { background:white; border-radius:12px; padding:20px; box-shadow:0 5px 15px rgba(0,0,0,0.08); }
+
+h2 { font-weight:600; margin-bottom:15px; color:#111827; }
+ul { padding-left:20px; }
+ul li { font-size:14px; margin-bottom:6px; }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+<h1>WorkConnect</h1>
+<button class="active" onclick="showPage('dashboard', this)">Dashboard</button>
+<button onclick="showPage('employees', this)">Employees</button>
+<button onclick="showPage('customers', this)">Customers</button>
+<button onclick="showPage('deals', this)">Deals</button>
+</div>
+
+<main>
+<div id="dashboard" class="page">
+  <div class="tabs">
+    <button class="active" onclick="showTab('overview', this)">Overview</button>
+    <button onclick="showTab('sales', this)">Sales</button>
+    <button onclick="showTab('targets', this)">Targets</button>
+    <button onclick="showTab('topEmployees', this)">Top Employees</button>
+    <button onclick="showTab('upcomingDeals', this)">Upcoming Deals</button>
+  </div>
+  
+  <div id="overview" class="tab-content">
+    <h2>Overview</h2>
+    <div class="cards">
+      <div class="card"><h3>Total Employees</h3><p id="totalEmployees">0</p><div class="mini-bar" style="width:70%"></div></div>
+      <div class="card"><h3>Active Employees</h3><p id="activeEmployees">0</p><div class="mini-bar" style="width:60%"></div></div>
+      <div class="card"><h3>Total Customers</h3><p id="totalCustomers">0</p><div class="mini-bar" style="width:80%"></div></div>
+      <div class="card"><h3>New Leads</h3><p id="newLeads">0</p><div class="mini-bar" style="width:50%"></div></div>
+    </div>
+  </div>
+
+  <div id="sales" class="tab-content">
+    <h2>Sales</h2>
+    <div class="cards">
+      <div class="card"><h3>Total Deals</h3><p id="totalDeals">0</p></div>
+      <div class="card"><h3>Deals Won</h3><p id="dealsWon">0</p></div>
+      <div class="card"><h3>Deals Lost</h3><p id="dealsLost">0</p></div>
+      <div class="card chart-container"><canvas id="revenueChart"></canvas></div>
+    </div>
+  </div>
+
+  <div id="targets" class="tab-content">
+    <h2>Targets</h2>
+    <table>
+      <thead><tr><th>Employee</th><th>Sales</th><th>Target</th><th>Performance</th></tr></thead>
+      <tbody id="targetTable"></tbody>
+    </table>
+  </div>
+
+  <div id="topEmployees" class="tab-content">
+    <h2>Top Employees</h2>
+    <ul id="topEmployeesList"></ul>
+  </div>
+
+  <div id="upcomingDeals" class="tab-content">
+    <h2>Upcoming Deals</h2>
+    <ul id="upcomingDealsList"></ul>
+  </div>
+</div>
+
+<div id="employees" class="page" style="display:none;">
+  <h2>Employees</h2>
+  <table>
+    <thead><tr><th>Name</th><th>Position</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>Alice</td><td>Sales Manager</td><td><span class="badge Active">Active</span></td></tr>
+      <tr><td>Bob</td><td>Account Executive</td><td><span class="badge Active">Active</span></td></tr>
+      <tr><td>Charlie</td><td>Sales Associate</td><td><span class="badge OnLeave">On Leave</span></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div id="customers" class="page" style="display:none;">
+  <h2>Customers</h2>
+  <table>
+    <thead><tr><th>Name</th><th>Company</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>John Doe</td><td>Company A</td><td><span class="badge Active">Active</span></td></tr>
+      <tr><td>Jane Smith</td><td>Company B</td><td><span class="badge Active">Active</span></td></tr>
+      <tr><td>Mark Taylor</td><td>Company C</td><td><span class="badge Inactive">Inactive</span></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div id="deals" class="page" style="display:none;">
+  <h2>Deals</h2>
+  <table>
+    <thead><tr><th>Customer</th><th>Value</th><th>Stage</th><th>Close Date</th></tr></thead>
+    <tbody>
+      <tr><td>Company A</td><td>$12000</td><td>Proposal</td><td>2025-12-10</td></tr>
+      <tr><td>Company B</td><td>$8000</td><td>Negotiation</td><td>2025-12-15</td></tr>
+      <tr><td>Company C</td><td>$6000</td><td>Closed Won</td><td>2025-11-30</td></tr>
+    </tbody>
+  </table>
+
+</main>
+
+<script>
+// Sample Data
+const employeesData = [
+  {name:"Alice", sales:12000, target:15000, status:"Active"},
+  {name:"Bob", sales:8000, target:10000, status:"Active"},
+  {name:"Charlie", sales:6000, target:7000, status:"On Leave"},
+  {name:"David", sales:9500, target:12000, status:"Active"}
+];
+const dealsData = [
+  {customer:"Company A", value:12000, stage:"Proposal", close:"2025-12-10"},
+  {customer:"Company B", value:8000, stage:"Negotiation", close:"2025-12-15"},
+  {customer:"Company C", value:6000, stage:"Closed Won", close:"2025-11-30"},
+  {customer:"Company D", value:9500, stage:"Proposal", close:"2025-12-05"}
+];
+
+// Metrics
+document.getElementById('totalEmployees').innerText = employeesData.length;
+document.getElementById('activeEmployees').innerText = employeesData.filter(e=>e.status==="Active").length;
+document.getElementById('totalCustomers').innerText = 50;
+document.getElementById('newLeads').innerText = 12;
+document.getElementById('totalDeals').innerText = dealsData.length;
+document.getElementById('dealsWon').innerText = dealsData.filter(d=>d.stage==="Closed Won").length;
+document.getElementById('dealsLost').innerText = dealsData.filter(d=>d.stage==="Closed Lost").length;
+
+// Targets Table
+const targetTable = document.getElementById('targetTable');
+employeesData.forEach(e=>{
+  const percent = Math.min(100, Math.round((e.sales/e.target)*100));
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td>${e.name}</td><td>$${e.sales}</td><td>$${e.target}</td>
+  <td><div class="progress-bar-container"><div class="progress-bar" style="width:${percent}%;background:#10B981">${percent}%</div></div></td>`;
+  targetTable.appendChild(tr);
+});
+
+// Top Employees
+const topEmployeesList = document.getElementById('topEmployeesList');
+employeesData.sort((a,b)=>b.sales-a.sales).forEach(e=>{
+  const li = document.createElement('li'); li.innerText = `${e.name} - $${e.sales}`; topEmployeesList.appendChild(li);
+});
+
+// Upcoming Deals
+const upcomingDealsList = document.getElementById('upcomingDealsList');
+dealsData.forEach(d=>{ const li = document.createElement('li'); li.innerText = `${d.customer} - $${d.value} (${d.close})`; upcomingDealsList.appendChild(li); });
+
+// Charts
+new Chart(document.getElementById('revenueChart').getContext('2d'),{
+  type:'bar',
+  data:{ labels:employeesData.map(e=>e.name), datasets:[{label:'Sales', data:employeesData.map(e=>e.sales), backgroundColor:'#10B981'}, {label:'Target', data:employeesData.map(e=>e.target), backgroundColor:'#3B82F6'}] },
+  options:{ responsive:true, scales:{ y:{ beginAtZero:true }}}
+});
+
+// Tabs
+function showTab(id, btn){
+  document.querySelectorAll('.tab-content').forEach(t=>t.style.display='none');
+  document.getElementById(id).style.display='flex';
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// Main Navigation
+function showPage(pageId, btn){
+  document.querySelectorAll('.page').forEach(p=>p.style.display='none');
+  document.getElementById(pageId).style.display='block';
+  document.querySelectorAll('.sidebar button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  if(pageId==='dashboard') showTab('overview', document.querySelector('.tabs button'));
+}
+
+// Init
+showPage('dashboard', document.querySelector('.sidebar button'));
+</script>
+
+</body>
+</html>
